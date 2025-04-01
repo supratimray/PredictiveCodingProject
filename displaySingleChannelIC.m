@@ -10,12 +10,13 @@ if ~exist('folderSourceString','var');  folderSourceString='F:';        end
 if ~exist('gridType','var');            gridType='Microelectrode';      end
 if ~exist('gridLayout','var');          gridLayout=2;                   end
 if ~exist('sideChoice','var');          sideChoice=[];                  end
-if ~exist('badTrialNameStr','var');     badTrialNameStr = '_v5';        end
+if ~exist('badTrialNameStr','var');     badTrialNameStr = 'V1';        end
 if ~exist('useCommonBadTrialsFlag','var'); useCommonBadTrialsFlag = 1;  end
 
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 
 % Get folders
+folderImage = fullfile(folderSourceString, 'data/images/New_sets/T');
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
 folderLFP = fullfile(folderSegment,'LFP');
@@ -36,13 +37,17 @@ folderSpikes = fullfile(folderSegment,'Spikes');
 % fonts
 fontSizeSmall = 10; fontSizeMedium = 12; fontSizeLarge = 16;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Make Panels
-panelHeight = 0.34; panelStartHeight = 0.61;
-staticPanelWidth = 0.25; staticStartPos = 0.025;
-dynamicPanelWidth = 0.25; dynamicStartPos = 0.275;
-timingPanelWidth = 0.25; timingStartPos = 0.525;
-plotOptionsPanelWidth = 0.2; plotOptionsStartPos = 0.775;
-backgroundColor = 'w';
+% UI
+aspectRatio = 16/9;
+UI.lr_margin = 2.5e-2;
+UI.ud_margin = 2.5e-2;
+UI.spacing = 1.25e-2;
+
+% Electrode Grid
+panel.grid.x = UI.lr_margin; 
+panel.grid.height = 0.34*(7/13); % Rescaling the V4/V1 grid height for V1|V4 rearrangement
+panel.grid.y = (1 - 2*UI.ud_margin) - panel.grid.height; 
+panel.grid.width = panel.grid.height*(17/6)*(1/aspectRatio); % Rescaling the grid width for V1|V4 rearrangement, while keeping approx. square spacing according to the monitor's aspect ratio
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% Static Panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -71,46 +76,51 @@ backgroundColor = 'w';
 % end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% Dynamic panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%% Parameters & Options Panel %%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-dynamicHeight = 0.06; dynamicGap=0.015; dynamicTextWidth = 0.6;
+dynamicHeight = 0.24; dynamicGap=3e-2; dynamicTextWidth = 0.2; titleGap = 0.1;
+
+panel.param.x = panel.grid.x + panel.grid.width + UI.spacing;
+panel.param.y = panel.grid.y + panel.grid.height/2;
+panel.param.width = (1 - (panel.param.x + UI.spacing + UI.lr_margin))/2;
+panel.param.height = panel.grid.height/2;
+paramPanelPos = [panel.param.x, panel.param.y, panel.param.width, panel.param.height];
+
 hDynamicPanel = uipanel('Title','Parameters','fontSize', fontSizeLarge, ...
-    'Unit','Normalized','Position',[dynamicStartPos panelStartHeight dynamicPanelWidth panelHeight]);
+    'Unit','Normalized','Position',paramPanelPos);
 
 % Analog channel
 [analogChannelStringList,analogChannelStringArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'Position',[0 1-(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight],...
-    'Style','text','String','Analog Channel','FontSize',fontSizeSmall);
+    'Position',[0 1-(dynamicHeight+dynamicGap)-titleGap dynamicTextWidth dynamicHeight],...
+    'Style','text','String','Analog Channel','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hAnalogChannel = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-(dynamicHeight+dynamicGap)-titleGap 0.5-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',analogChannelStringList,'FontSize',fontSizeSmall);
 
 % Neural channel
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'Position',[0 1-2*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight],...
+    'Position',[0.5 1-(dynamicHeight+dynamicGap)-titleGap dynamicTextWidth dynamicHeight],...
     'Style','text','String','Neural Channel','FontSize',fontSizeSmall);
     
 if ~isempty(neuralChannelsStored)
     neuralChannelString = getNeuralStringFromValues(neuralChannelsStored,SourceUnitIDs);
     hNeuralChannel = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-        'BackgroundColor', backgroundColor, 'Position', ...
-        [dynamicTextWidth 1-2*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+        'Position',[0.5+dynamicTextWidth 1-(dynamicHeight+dynamicGap)-titleGap 0.5-dynamicTextWidth dynamicHeight],...
         'Style','popup','String',neuralChannelString,'FontSize',fontSizeSmall);
 else
     hNeuralChannel = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-        'Position', [dynamicTextWidth 1-2*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+        'Position',[0.5+dynamicTextWidth 1-(dynamicHeight+dynamicGap)-titleGap 0.5-dynamicTextWidth dynamicHeight],...
         'Style','text','String','Not found','FontSize',fontSizeSmall);
 end
+%{
 % Sigma
 sigmaString = getStringFromValues(sValsUnique,1);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-3*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Sigma (Deg)','FontSize',fontSizeSmall);
 hSigma = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-3*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-3*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',sigmaString,'FontSize',fontSizeSmall);
 
 % Spatial Frequency
@@ -119,8 +129,7 @@ uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-4*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Spatial Freq (CPD)','FontSize',fontSizeSmall);
 hSpatialFreq = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-4*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-4*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',spatialFreqString,'FontSize',fontSizeSmall);
 
 % Orientation
@@ -129,8 +138,7 @@ uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-5*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Orientation (Deg)','FontSize',fontSizeSmall);
 hOrientation = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',orientationString,'FontSize',fontSizeSmall);
 
 % Contrast
@@ -139,8 +147,7 @@ uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-6*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Contrast (%)','FontSize',fontSizeSmall);
 hContrast = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-6*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-6*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',contrastString,'FontSize',fontSizeSmall);
 
 % Temporal Frequency
@@ -149,20 +156,27 @@ uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-7*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Temporal Freq (Hz)','FontSize',fontSizeSmall);
 hTemporalFreq = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-7*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-7*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',temporalFreqString,'FontSize',fontSizeSmall);
+%}
+% Stim Type
+stimTypeString = 'Color|Grayscale';
+uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'Position',[0 1-2*(dynamicHeight+dynamicGap)-titleGap dynamicTextWidth dynamicHeight], ...
+    'Style','text','String','Stim Type','HorizontalAlignment','left','FontSize',fontSizeSmall);
+hStimType = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'Position',[dynamicTextWidth 1-2*(dynamicHeight+dynamicGap)-titleGap 1-dynamicTextWidth dynamicHeight], ...
+    'Style','popup','String',stimTypeString,'FontSize',fontSizeSmall);
 
 % Analysis Type
-analysisTypeString = 'ERP|Firing Rate|Raster|FFT|delta FFT|STA|FFT_ERP|delta FFT_ERP|TF|delta TF';
+analysisTypeString = 'ERP|FFT|deltaFFT|TF|deltaTF|Raster|FR|FFT(ERP)|deltaFFT(ERP)|STA';
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'Position',[0 1-8*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
-    'Style','text','String','Analysis Type','FontSize',fontSizeSmall);
+    'Position',[0 1-3*(dynamicHeight+dynamicGap)-titleGap dynamicTextWidth dynamicHeight], ...
+    'Style','text','String','Analysis Type','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hAnalysisType = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-8*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-3*(dynamicHeight+dynamicGap)-titleGap 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',analysisTypeString,'FontSize',fontSizeSmall);
-
+%{
 % For orientation and SF
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-9.5*(dynamicHeight+dynamicGap) 1 dynamicHeight],...
@@ -173,8 +187,7 @@ uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-10.5*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight],...
     'Style','text','String','Azimuth (Deg)','FontSize',fontSizeSmall);
 hAzimuth = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position', ...
-    [dynamicTextWidth 1-10.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-10.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',azimuthString,'FontSize',fontSizeSmall);
 
 % Elevation
@@ -183,8 +196,7 @@ uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-11.5*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Elevation (Deg)','FontSize',fontSizeSmall);
 hElevation = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position',...
-    [dynamicTextWidth 1-11.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-11.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',elevationString,'FontSize',fontSizeSmall);
 
 % Reference scheme
@@ -195,184 +207,161 @@ uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-12.5*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Reference','FontSize',fontSizeSmall);
 hReferenceChannel = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position',...
-    [dynamicTextWidth 1-12.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Position',[dynamicTextWidth 1-12.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',referenceChannelStringList,'FontSize',fontSizeSmall);
+%}
+% Options Panel (w/o title)
+panel.opt.x = panel.param.x;
+panel.opt.y = panel.grid.y;
+panel.opt.width = panel.param.width;
+panel.opt.height = panel.param.height;
+optPanelPos = [panel.opt.x, panel.opt.y, panel.opt.width, panel.opt.height];
+
+hOptionsPanel = uipanel('Unit','Normalized','Position',optPanelPos);
+
+% Plot Color
+[colorString, colorNames] = getColorString;
+uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[0 1-dynamicHeight dynamicTextWidth dynamicHeight], ...
+    'Style','text','String','Color','HorizontalAlignment','left','FontSize',fontSizeSmall);
+hChooseColor = uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[dynamicTextWidth 1-dynamicHeight 1-dynamicTextWidth dynamicHeight], ...
+    'Style','popup','String',colorString,'FontSize',fontSizeSmall);
+
+% Clear All
+uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[0 2*dynamicHeight 0.5 dynamicHeight+dynamicGap], ...
+    'Style','pushbutton','String','Clear','FontSize',fontSizeMedium, ...
+    'Callback',{@cla_Callback});
+
+% Hold On
+hHoldOn = uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[0 dynamicHeight 0.5 dynamicHeight+dynamicGap], ...
+    'Style','togglebutton','String','Hold','FontSize',fontSizeMedium, ...
+    'Callback',{@holdOn_Callback});
+
+% Plot
+uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[0 0 0.5 dynamicHeight+dynamicGap], ...
+    'Style','pushbutton','String','Plot','FontSize',fontSizeMedium, ...
+    'Callback',{@plotData_Callback});
+
+% Rescale XYZ
+uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[0.5 2*dynamicHeight 0.5 dynamicHeight+dynamicGap], ...
+    'Style','pushbutton','String','Rescale X','FontSize',fontSizeMedium, ...
+    'Callback',{@rescaleData_Callback});
+uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[0.5 dynamicHeight 0.5 dynamicHeight+dynamicGap], ...
+    'Style','pushbutton','String','Rescale Y','FontSize',fontSizeMedium, ...
+    'Callback',{@rescaleY_Callback});
+uicontrol('Parent',hOptionsPanel,'Unit','Normalized', ...
+    'Position',[0.5 0 0.5 dynamicHeight+dynamicGap], ...
+    'Style','pushbutton','String','Rescale Z','FontSize',fontSizeMedium, ...
+    'Callback',{@rescaleZ_Callback});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% Timing panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% Timing Panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-timingHeight = 0.1; timingTextWidth = 0.5; timingBoxWidth = 0.25;
-hTimingPanel = uipanel('Title','Timing','fontSize', fontSizeLarge, ...
-    'Unit','Normalized','Position',[timingStartPos panelStartHeight timingPanelWidth panelHeight]);
+panel.tim.x = panel.param.x + panel.param.width + UI.spacing;
+panel.tim.y = panel.opt.y;
+panel.tim.width = panel.param.width;
+panel.tim.height = panel.grid.height;
+timingPanelPos = [panel.tim.x, panel.tim.y, panel.tim.width, panel.tim.height];
 
-signalRange = [-0.2 1];
-fftRange = [0 100];
-baseline = [-0.5 0];
-stimPeriod = [0.25 0.75];
+hTimingPanel = uipanel('Title','Timing                                         Min                     Max',...
+    'fontSize', fontSizeLarge,'Unit','Normalized','Position',timingPanelPos);
 
 % Signal Range
+signalRange = [-0.2 1];
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','Parameter','FontSize',fontSizeMedium);
-
-uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[timingTextWidth 1-timingHeight timingBoxWidth timingHeight], ...
-    'Style','text','String','Min','FontSize',fontSizeMedium);
-
-uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[timingTextWidth+timingBoxWidth 1-timingHeight timingBoxWidth timingHeight], ...
-    'Style','text','String','Max','FontSize',fontSizeMedium);
-
-% Stim Range
-uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-3*timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','Stim Range (s)','FontSize',fontSizeSmall);
+    'Position',[0 1-(dynamicHeight+dynamicGap)/2-titleGap/2 0.5 dynamicHeight/2], ...
+    'Style','text','String','Signal Range (s)','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hStimMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-3*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.5 1-(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(signalRange(1)),'FontSize',fontSizeSmall);
 hStimMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-3*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.75 1-(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(signalRange(2)),'FontSize',fontSizeSmall);
 
-% FFT Range
-uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-4*timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','FFT Range (Hz)','FontSize',fontSizeSmall);
-hFFTMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-4*timingHeight timingBoxWidth timingHeight], ...
-    'Style','edit','String',num2str(fftRange(1)),'FontSize',fontSizeSmall);
-hFFTMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-4*timingHeight timingBoxWidth timingHeight], ...
-    'Style','edit','String',num2str(fftRange(2)),'FontSize',fontSizeSmall);
-
 % Baseline
+baseline = [-0.5 0];
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-5*timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','Basline (s)','FontSize',fontSizeSmall);
+    'Position',[0 1-2*(dynamicHeight+dynamicGap)/2-titleGap/2 0.5 dynamicHeight/2], ...
+    'Style','text','String','Baseline Duration (s)','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hBaselineMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-5*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.5 1-2*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(baseline(1)),'FontSize',fontSizeSmall);
 hBaselineMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-5*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.75 1-2*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(baseline(2)),'FontSize',fontSizeSmall);
 
 % Stim Period
+stimPeriod = [0.25 0.75];
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-6*timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','Stim period (s)','FontSize',fontSizeSmall);
+    'Position',[0 1-3*(dynamicHeight+dynamicGap)/2-titleGap/2 0.5 dynamicHeight/2], ...
+    'Style','text','String','Stimulus Duration (s)','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hStimPeriodMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-6*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.5 1-3*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(stimPeriod(1)),'FontSize',fontSizeSmall);
 hStimPeriodMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-6*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.75 1-3*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(stimPeriod(2)),'FontSize',fontSizeSmall);
+
+% FFT Range
+fftRange = [0 100];
+uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'Position',[0 1-4*(dynamicHeight+dynamicGap)/2-titleGap/2 0.5 dynamicHeight/2], ...
+    'Style','text','String','FFT Range (Hz)','HorizontalAlignment','left','FontSize',fontSizeSmall);
+hFFTMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'Position',[0.5 1-4*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
+    'Style','edit','String',num2str(fftRange(1)),'FontSize',fontSizeSmall);
+hFFTMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'Position',[0.75 1-4*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
+    'Style','edit','String',num2str(fftRange(2)),'FontSize',fontSizeSmall);
 
 % Y Range
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-7*timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','Y Range','FontSize',fontSizeSmall);
+    'Position',[0 1-5*(dynamicHeight+dynamicGap)/2-titleGap/2 0.5 dynamicHeight/2], ...
+    'Style','text','String','Y Range','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hYMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-7*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.5 1-5*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String','0','FontSize',fontSizeSmall);
 hYMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-7*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.75 1-5*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String','1','FontSize',fontSizeSmall);
 
 % Z Range
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-8*timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','Z Range','FontSize',fontSizeSmall);
+    'Position',[0 1-6*(dynamicHeight+dynamicGap)/2-titleGap/2 0.5 dynamicHeight/2], ...
+    'Style','text','String','Z Range','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hZMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-8*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.5 1-6*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String','0','FontSize',fontSizeSmall);
 hZMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-8*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.75 1-6*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String','1','FontSize',fontSizeSmall);
 
 % STA length
 staLen = [-0.05 0.05]; 
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-9*timingHeight timingTextWidth timingHeight], ...
-    'Style','text','String','STA len (s)','FontSize',fontSizeSmall);
+    'Position',[0 1-7*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
+    'Style','text','String','STA Length (s)','HorizontalAlignment','left','FontSize',fontSizeSmall);
 hSTAMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-9*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.5 1-7*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(staLen(1)),'FontSize',fontSizeSmall);
 hSTAMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-9*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[0.75 1-7*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
     'Style','edit','String',num2str(staLen(2)),'FontSize',fontSizeSmall);
 hRemoveMeanSTA = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[0 1-10*timingHeight 1 timingHeight], ...
-    'Style','togglebutton','String','remove mean STA','FontSize',fontSizeMedium);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% Plot Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-plotOptionsHeight = 0.1;
-hPlotOptionsPanel = uipanel('Title','Plotting Options','fontSize', fontSizeLarge, ...
-    'Unit','Normalized','Position',[plotOptionsStartPos panelStartHeight plotOptionsPanelWidth panelHeight]);
-
-% Button for Plotting
-[colorString, colorNames] = getColorString;
-uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 1-plotOptionsHeight 0.6 plotOptionsHeight], ...
-    'Style','text','String','Color','FontSize',fontSizeSmall);
-
-hChooseColor = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[0.6 1-plotOptionsHeight 0.4 plotOptionsHeight], ...
-    'Style','popup','String',colorString,'FontSize',fontSizeSmall);
-
-uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 5*plotOptionsHeight 1 plotOptionsHeight], ...
-    'Style','pushbutton','String','cla','FontSize',fontSizeMedium, ...
-    'Callback',{@cla_Callback});
-
-hHoldOn = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 4*plotOptionsHeight 1 plotOptionsHeight], ...
-    'Style','togglebutton','String','hold on','FontSize',fontSizeMedium, ...
-    'Callback',{@holdOn_Callback});
-
-uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 3*plotOptionsHeight 1 plotOptionsHeight], ...
-    'Style','pushbutton','String','rescale Z','FontSize',fontSizeMedium, ...
-    'Callback',{@rescaleZ_Callback});
-
-uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 2*plotOptionsHeight 1 plotOptionsHeight], ...
-    'Style','pushbutton','String','rescale Y','FontSize',fontSizeMedium, ...
-    'Callback',{@rescaleY_Callback});
-
-uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 plotOptionsHeight 1 plotOptionsHeight], ...
-    'Style','pushbutton','String','rescale X','FontSize',fontSizeMedium, ...
-    'Callback',{@rescaleData_Callback});
-
-uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 0 1 plotOptionsHeight], ...
-    'Style','pushbutton','String','plot','FontSize',fontSizeMedium, ...
-    'Callback',{@plotData_Callback});
+    'Position',[0.25 1-7*(dynamicHeight+dynamicGap)/2-titleGap/2 0.25 dynamicHeight/2], ...
+    'Style','togglebutton','String','Remove Mean STA','FontSize',fontSizeSmall);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get plots and message handles
 
 % Get electrode array information
-electrodeGridPos = [staticStartPos panelStartHeight staticPanelWidth panelHeight];
+electrodeGridPos = [panel.grid.x, panel.grid.y, panel.grid.width, panel.grid.height];
 hElectrodes = showElectrodeLocations(electrodeGridPos,analogChannelsStored(get(hAnalogChannel,'val')), ...
     colorNames(get(hChooseColor,'val')),[],1,0,gridType,subjectName,gridLayout);
 
@@ -384,8 +373,12 @@ hElectrodes = showElectrodeLocations(electrodeGridPos,analogChannelsStored(get(h
 %     mapRatio = 1/2;
 % end
 
-startXPos = staticStartPos; endXPos = 0.95; startYPos = 0.05; mainRFHeight = 0.55; %centerGap = 0.05;
-mainRFWidth = (endXPos-startXPos);
+gap = 2e-3;
+tile.x = UI.lr_margin; 
+tile.y = UI.ud_margin;
+tile.width = 1-2*UI.lr_margin;
+tile.height = 0.55 + UI.ud_margin;
+tilePos = [tile.x, tile.y, tile.width, tile.height];
 %otherPlotsWidth = (1-mapRatio)*(endXPos-startXPos-centerGap);
 
 % RF and centerRF
@@ -396,12 +389,11 @@ mainRFWidth = (endXPos-startXPos);
 
 % Main plot handles
 numTypes = 6;
-numImages = length(oValsUnique)/numTypes;
+numImages = (length(oValsUnique)/numTypes)/length(string(strsplit(stimTypeString, '|')));
 numRows = numTypes; numCols = numImages;
-gridPos=[endXPos-mainRFWidth startYPos mainRFWidth mainRFHeight]; gap = 0.002;
-plotHandles = getPlotHandles(numRows,numCols,gridPos,gap);
+plotHandles = getPlotHandles(numRows,numCols,tilePos,gap);
 
-uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
+uicontrol('Unit','Normalized','Position',[0 1-UI.ud_margin 1 UI.ud_margin],...
     'Style','text','String',[subjectName expDate protocolName],'FontSize',fontSizeLarge);
 
 % Other functions
@@ -426,27 +418,28 @@ uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
 % hSpatialFreqPlot  = getPlotHandles(1,length(fValsUnique),spatialFreqGrid,0);
 % hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
 
-colormap jet
+if isfile("cmap.mat"), colormap(load("cmap.mat").("icefire")), else colormap turbo, end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions
     function plotData_Callback(~,~)
-        a=get(hAzimuth,'val');
-        e=get(hElevation,'val');
-        s=get(hSigma,'val');
-        f=get(hSpatialFreq,'val');
-        o=get(hOrientation,'val');
-        c=get(hContrast,'val');
-        t=get(hTemporalFreq,'val');
-        analysisType = get(hAnalysisType,'val');
+        a=1;
+        e=1;
+        s=1;
+        f=1;
+        o=length(oValsUnique)+1;
+        c=1;
+        t=1;
+        analysisType = string(strsplit(analysisTypeString, '|'));
+        analysisType = analysisType(get(hAnalysisType,'val'));
         plotColor = colorNames(get(hChooseColor,'val'));
         blRange = [str2double(get(hBaselineMin,'String')) str2double(get(hBaselineMax,'String'))];
         stRange = [str2double(get(hStimPeriodMin,'String')) str2double(get(hStimPeriodMax,'String'))];
         staRange = [str2double(get(hSTAMin,'String')) str2double(get(hSTAMax,'String'))];
         holdOnState = get(hHoldOn,'val');
         removeMeanSTA = get(hRemoveMeanSTA,'val');
-        referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
+        referenceChannelString = 'None';
 
-        if analysisType==6 % Spike triggered average
+        if analysisType=="STA" % Spike triggered average
             analogChannelPos = get(hAnalogChannel,'val');
             analogChannelString = analogChannelStringArray{analogChannelPos};
             spikeChannelPos = get(hNeuralChannel,'val');
@@ -471,7 +464,7 @@ colormap jet
             end
             channelNumber = [analogChannelNumber spikeChannelNumber];
             
-        elseif analysisType == 2 || analysisType == 3
+        elseif analysisType == "Raster" || analysisType == "FR"
             channelPos = get(hNeuralChannel,'val');
             channelNumber = neuralChannelsStored(channelPos);
             unitID = SourceUnitIDs(channelPos);
@@ -518,10 +511,10 @@ colormap jet
             % end
         end
 
-        if analysisType<=3 || analysisType>=9 % ERP or spikes, or TF
+        if ismember(analysisType,  ["ERP", "Raster", "FR", "TF", "deltaTF"]) % ERP or spikes, or TF
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
-        elseif analysisType == 6
+        elseif analysisType=="STA"
             xMin = str2double(get(hSTAMin,'String'));
             xMax = str2double(get(hSTAMax,'String'));
         else
@@ -529,7 +522,7 @@ colormap jet
             xMax = str2double(get(hFFTMax,'String'));
         end
 
-        if analysisType<=9
+        if analysisType~="deltaTF"
             rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
             % rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
             % rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
@@ -562,9 +555,10 @@ colormap jet
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleZ_Callback(~,~)
 
-        analysisType = get(hAnalysisType,'val');
+        analysisType = string(strsplit(analysisTypeString, '|'));
+        analysisType = analysisType(get(hAnalysisType,'val'));
         
-        if analysisType>=9
+        if ismember(analysisType,  ["TF", "deltaTF"])
             zRange = [str2double(get(hZMin,'String')) str2double(get(hZMax,'String'))];
             rescaleZPlots(plotHandles,zRange);
             % rescaleZPlots(hTemporalFreqPlot,zRange);
@@ -577,12 +571,13 @@ colormap jet
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleY_Callback(~,~)
 
-        analysisType = get(hAnalysisType,'val');
+        analysisType = string(strsplit(analysisTypeString, '|'));
+        analysisType = analysisType(get(hAnalysisType,'val'));
         
-        if analysisType<=3 || analysisType>=9 % ERP or spikes
+        if ismember(analysisType,  ["ERP", "Raster", "FR", "TF", "deltaTF"]) % ERP or spikes, or TF
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
-        elseif analysisType==6
+        elseif analysisType=="STA"
             xMin = str2double(get(hSTAMin,'String'));
             xMax = str2double(get(hSTAMax,'String'));
         else
@@ -601,12 +596,13 @@ colormap jet
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleData_Callback(~,~)
 
-        analysisType = get(hAnalysisType,'val');
+        analysisType = string(strsplit(analysisTypeString, '|'));
+        analysisType = analysisType(get(hAnalysisType,'val'));
 
-        if analysisType<=3 || analysisType>=9 % ERP or spikes or TFs
+        if ismember(analysisType,  ["ERP", "Raster", "FR", "TF", "deltaTF"]) % ERP or spikes or TFs
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
-        elseif analysisType==6
+        elseif analysisType=="STA"
             xMin = str2double(get(hSTAMin,'String'));
             xMax = str2double(get(hSTAMax,'String'));
         else    
@@ -614,7 +610,7 @@ colormap jet
             xMax = str2double(get(hFFTMax,'String'));
         end
 
-        if analysisType<=9
+        if analysisType~="deltaTF"
             rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
             % rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
             % rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
@@ -690,20 +686,13 @@ colormap jet
             end
         end
     end
-end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
-function rfMapVals = plotLFPData1Channel(plotHandles,channelString,s,f,o,c,t,folderLFP,...
-analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
+function rfMapVals = plotLFPData1Channel(plotHandles,channelString,s,f,~,c,t,folderLFP,...
+analysisType,timeVals,plotColor,blRange,stRange,~,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
 
-folderExtract = fullfile(folderName,'extractedData');
-folderSegment = fullfile(folderName,'segmentedData');
-
-titleFontSize = 10;
-
-[parameterCombinations,aValsUnique,eValsUnique] = loadParameterCombinations(folderExtract,sideChoice);
-[numRows,numCols] = size(plotHandles);
+parameterCombinations = loadParameterCombinations(folderExtract,sideChoice);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Get Signal %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear analogData
@@ -747,7 +736,7 @@ params.Fs       = Fs;
 params.trialave = 1; %averaging across trials
 
 useCommonBLFlag=1;
-if analysisType == 10
+if analysisType == "deltaTF"
     clear goodPos
     goodPos = parameterCombinations{size(parameterCombinations,1),size(parameterCombinations,2),s,f,size(parameterCombinations,5),c,t};
     goodPos = setdiff(goodPos,badTrials);
@@ -761,13 +750,14 @@ if analysisType == 10
     logSBLAllConditions = repmat(blPower,length(xValToPlot),1);
 end
 
+stimType = string(strsplit(stimTypeString, '|'));
 rfMapVals = zeros(numRows,numCols);
 for i=1:numRows
     e = numRows-i+1;
     for j=1:numCols
         a = j;
         clear goodPos
-        o = numRows*(j-1)+i;
+        o = numRows*(j-1) + i + (numRows*numCols)*(stimType(get(hStimType,'val')) == "Grayscale");
         goodPos = parameterCombinations{1,1,s,f,o,c,t};
         goodPos = setdiff(goodPos,badTrials);
       
@@ -786,51 +776,51 @@ for i=1:numRows
                 xs = 0:1/diff(range):Fs-1/diff(range);
             end
 
-            if analysisType == 1        % compute ERP
+            if analysisType == "ERP"        % compute ERP
                 clear erp
                 erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
                 plot(plotHandles(i,j),timeVals,erp,'color',plotColor);
                 
                 rfMapVals(e,a) = rms(erp(stPos));
 
-            elseif analysisType == 2  ||   analysisType == 3 % compute Firing rates
+            elseif analysisType == "Raster"  ||   analysisType == "FR" % compute Firing rates
                 disp('Use plotSpikeData instead of plotLFPData...');
                 
-            elseif analysisType == 4  ||   analysisType == 5
+            elseif analysisType == "FFT"  ||   analysisType == "deltaFFT"
                 fftBL = abs(fft(analogData(goodPos,blPos),[],2));
                 fftST = abs(fft(analogData(goodPos,stPos),[],2));
 
-                if analysisType == 4
+                if analysisType == "FFT"
                     plot(plotHandles(i,j),xs,log10(mean(fftBL)),'g');
                     set(plotHandles(i,j),'Nextplot','add');
                     plot(plotHandles(i,j),xs,log10(mean(fftST)),'k');
                     set(plotHandles(i,j),'Nextplot','replace');
                 end
 
-                if analysisType == 5
+                if analysisType == "deltaFFT"
                     plot(plotHandles(i,j),xs,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
                 end
                 
-            elseif analysisType == 7 || analysisType == 8
+            elseif analysisType == "FFT(ERP)" || analysisType == "deltaFFT(ERP)"
                 fftERPBL = abs(fft(mean(analogData(goodPos,blPos),1)));
                 fftERPST = abs(fft(mean(analogData(goodPos,stPos),1)));
                 
-                if analysisType == 7
+                if analysisType == "FFT(ERP)"
                     plot(plotHandles(i,j),xs,log10(fftERPBL),'g');
                     set(plotHandles(i,j),'Nextplot','add');
                     plot(plotHandles(i,j),xs,log10(fftERPST),'k');
                     set(plotHandles(i,j),'Nextplot','replace');
                 end
                 
-                if analysisType == 8
+                if analysisType == "deltaFFT(ERP)"
                     plot(plotHandles(i,j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
                 end
             
-            elseif analysisType == 9 || analysisType == 10  % TF analysis
+            elseif analysisType == "TF" || analysisType == "deltaTF"  % TF analysis
 
                 [S,timeTF,freqTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
                 xValToPlot = timeTF+timeVals(1)-1/Fs;
-                if (analysisType==9)
+                if (analysisType=="TF")
                     pcolor(plotHandles(i,j),xValToPlot,freqTF,log10(S'));
                     shading(plotHandles(i,j),'interp');
                 else
@@ -869,8 +859,76 @@ for i=1:numRows
     end
 end
 
-if analysisType~=1
+if analysisType~="ERP"
     rfMapVals=[];
+end
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotSpikeData1Channel(plotHandles,channelNumber,s,f,~,c,t,folderSpikes,...
+analysisType,timeVals,plotColor,unitID,~,sideChoice)
+
+parameterCombinations = loadParameterCombinations(folderExtract,sideChoice);
+
+% Get the data
+clear spikeData
+x=load(fullfile(folderSpikes,['elec' num2str(channelNumber) '_SID' num2str(unitID) '.mat']));
+spikeData=x.spikeData;
+
+% Get bad trials
+badTrialFile = fullfile(folderSegment,'badTrials.mat');
+if ~exist(badTrialFile,'file')
+    disp('Bad trial file does not exist...');
+    badTrials=[];
+else
+    badTrials = loadBadTrials(badTrialFile);
+    disp([num2str(length(badTrials)) ' bad trials']);
+end
+
+stimType = string(strsplit(stimTypeString, '|'));
+for i=1:numRows
+    e = numRows-i+1;
+    for j=1:numCols
+        a = j;
+        clear goodPos
+        o = numRows*(j-1) + i + (numRows*numCols)*(stimType(get(hStimType,'val')) == "Grayscale");
+        goodPos = parameterCombinations{1,1,s,f,o,c,t};
+        goodPos = setdiff(goodPos,badTrials);
+
+        if isempty(goodPos)
+            disp('No entries for this combination..')
+        else
+            disp(['pos=(' num2str(i) ',' num2str(j) ') ,n=' num2str(length(goodPos))]);
+            
+            if analysisType == "FR"
+                [psthVals,xs] = getPSTH(spikeData(goodPos),10,[timeVals(1) timeVals(end)]);
+                plot(plotHandles(i,j),xs,psthVals,'color',plotColor);
+            else
+                X = spikeData(goodPos);
+                axes(plotHandles(i,j)); %#ok<LAXES>
+                rasterplot(X,1:length(X),plotColor);
+            end
+        end
+        
+        % Display title
+        % if (i==1)
+        %     if (j==1)
+        %         title(plotHandles(i,j),['Azi: ' num2str(aValsUnique(a))],'FontSize',titleFontSize);
+        %     else
+        %         title(plotHandles(i,j),num2str(aValsUnique(a)),'FontSize',titleFontSize);
+        %     end
+        % end
+        % 
+        % if (j==numCols)
+        %     if (i==1)
+        %         title(plotHandles(i,j),[{'Ele'} {num2str(eValsUnique(e))}],'FontSize',titleFontSize,...
+        %             'Units','Normalized','Position',[1.25 0.5]);
+        %     else
+        %         title(plotHandles(i,j),num2str(eValsUnique(e)),'FontSize',titleFontSize,...
+        %             'Units','Normalized','Position',[1.25 0.5]);
+        %     end
+        % end
+    end
+end
 end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1034,7 +1092,7 @@ for j=1:numCols
         xsComputation = intersect(find(timeVals>=timeForComputation(1)),find(timeVals<timeForComputation(2)));
         freqComputation = intersect(find(xs>=freqForComputation(1)),find(xs<=freqForComputation(2)));
 
-        if analysisType == 1        % compute ERP
+        if analysisType == "ERP"        % compute ERP
             clear erp
             erp = mean(analogData(goodPos,:),1);
             erp = erp - mean(erp(blPos));
@@ -1045,21 +1103,21 @@ for j=1:numCols
                 computationVals(j) = abs(min(erp(xsComputation)));
             end
 
-        elseif analysisType == 2 || analysisType == 3   % compute Firing rates
+        elseif analysisType == "Raster" || analysisType == "FR"   % compute Firing rates
             disp('Use plotSpikeData instead of plotLFPData...');
             
-        elseif analysisType == 4 || analysisType == 5
+        elseif analysisType == "FFT" || analysisType == "deltaFFT"
             fftBL = abs(fft(analogData(goodPos,blPos),[],2));
             fftST = abs(fft(analogData(goodPos,stPos),[],2));
 
-            if analysisType == 4
+            if analysisType == "FFT"
                 plot(plotHandles(j),xs,log10(mean(fftBL)),'g');
                 set(plotHandles(j),'Nextplot','add');
                 plot(plotHandles(j),xs,log10(mean(fftST)),'k');
                 set(plotHandles(j),'Nextplot','replace');
             end
 
-            if analysisType == 5
+            if analysisType == "deltaFFT"
                 plot(plotHandles(j),xs,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
             end
             
@@ -1067,18 +1125,18 @@ for j=1:numCols
                 computationVals(j) = max(mean(fftST(:,freqComputation),1));
             end
             
-        elseif analysisType == 7 || analysisType == 8
+        elseif analysisType == "FFT(ERP)" || analysisType == "deltaFFT(ERP)"
             fftERPBL = abs(fft(mean(analogData(goodPos,blPos),1)));
             fftERPST = abs(fft(mean(analogData(goodPos,stPos),1)));
 
-            if analysisType == 7
+            if analysisType == "FFT(ERP)"
                 plot(plotHandles(j),xs,log10(fftERPBL),'g');
                 set(plotHandles(j),'Nextplot','add');
                 plot(plotHandles(j),xs,log10(fftERPST),'k');
                 set(plotHandles(j),'Nextplot','replace');
             end
 
-            if analysisType == 8
+            if analysisType == "deltaFFT(ERP)"
                 plot(plotHandles(j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
             end
             
@@ -1086,7 +1144,7 @@ for j=1:numCols
                 computationVals(j) = max(mean(fftERPST(freqComputation)),1);
             end
        
-        elseif analysisType == 9 || analysisType == 10
+        elseif analysisType == "TF" || analysisType == "deltaTF"
             
             % Set up multitaper for TF analysis
             movingwin = [0.25 0.025];
@@ -1097,7 +1155,7 @@ for j=1:numCols
             
             [S,timeTF,freqTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
             xValToPlot = timeTF+timeVals(1)-1/Fs;
-            if (analysisType==9)
+            if (analysisType=="TF")
                 pcolor(plotHandles(j),xValToPlot,freqTF,log10(S'));
                 shading(plotHandles(j),'interp');
             else
@@ -1121,7 +1179,7 @@ end
 
 % Orientation tuning
 if isempty(o)
-    if analysisType == 1
+    if analysisType == "ERP"
         disp(['Orientation selectivity values calculated between ' num2str(timeForComputation(1)) '-' num2str(timeForComputation(2))  ' s']);
     else
         disp(['Orientation selectivity values calculated between ' num2str(freqForComputation(1)) '-' num2str(freqForComputation(2))  ' Hz']);
@@ -1129,77 +1187,6 @@ if isempty(o)
     disp(['orientation values: ' num2str(computationVals)]);
     [prefOrientation,orientationSelectivity] = getOrientationTuning(computationVals,oValsUnique);
     disp(['prefOri: ' num2str(round(prefOrientation)) ', sel: ' num2str(orientationSelectivity)]);
-end
-end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function plotSpikeData1Channel(plotHandles,channelNumber,s,f,o,c,t,folderSpikes,...
-analysisType,timeVals,plotColor,unitID,folderName,sideChoice)
-titleFontSize = 12;
-
-folderExtract = fullfile(folderName,'extractedData');
-folderSegment = fullfile(folderName,'segmentedData');
-
-[parameterCombinations,aValsUnique,eValsUnique] = loadParameterCombinations(folderExtract,sideChoice);
-[numRows,numCols] = size(plotHandles);
-
-% Get the data
-clear spikeData
-x=load(fullfile(folderSpikes,['elec' num2str(channelNumber) '_SID' num2str(unitID) '.mat']));
-spikeData=x.spikeData;
-
-% Get bad trials
-badTrialFile = fullfile(folderSegment,'badTrials.mat');
-if ~exist(badTrialFile,'file')
-    disp('Bad trial file does not exist...');
-    badTrials=[];
-else
-    badTrials = loadBadTrials(badTrialFile);
-    disp([num2str(length(badTrials)) ' bad trials']);
-end
-
-for i=1:numRows
-    e = numRows-i+1;
-    for j=1:numCols
-        a = j;
-        clear goodPos
-        o = numRows*(j-1)+i;
-        goodPos = parameterCombinations{1,1,s,f,o,c,t};
-        goodPos = setdiff(goodPos,badTrials);
-
-        if isempty(goodPos)
-            disp('No entries for this combination..')
-        else
-            disp(['pos=(' num2str(i) ',' num2str(j) ') ,n=' num2str(length(goodPos))]);
-            
-            if analysisType == 2
-                [psthVals,xs] = getPSTH(spikeData(goodPos),10,[timeVals(1) timeVals(end)]);
-                plot(plotHandles(i,j),xs,psthVals,'color',plotColor);
-            else
-                X = spikeData(goodPos);
-                axes(plotHandles(i,j)); %#ok<LAXES>
-                rasterplot(X,1:length(X),plotColor);
-            end
-        end
-        
-        % Display title
-        % if (i==1)
-        %     if (j==1)
-        %         title(plotHandles(i,j),['Azi: ' num2str(aValsUnique(a))],'FontSize',titleFontSize);
-        %     else
-        %         title(plotHandles(i,j),num2str(aValsUnique(a)),'FontSize',titleFontSize);
-        %     end
-        % end
-        % 
-        % if (j==numCols)
-        %     if (i==1)
-        %         title(plotHandles(i,j),[{'Ele'} {num2str(eValsUnique(e))}],'FontSize',titleFontSize,...
-        %             'Units','Normalized','Position',[1.25 0.5]);
-        %     else
-        %         title(plotHandles(i,j),num2str(eValsUnique(e)),'FontSize',titleFontSize,...
-        %             'Units','Normalized','Position',[1.25 0.5]);
-        %     end
-        % end
-    end
 end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1326,7 +1313,7 @@ for j=1:numCols
         disp('No entries for this combination..')
     else
         disp(['pos=' num2str(j) ',n=' num2str(length(goodPos))]);
-        if analysisType == 2
+        if analysisType == "FR"
             [psthVals,xs] = getPSTH(spikeData(goodPos),10,[timeVals(1) timeVals(end)]);
             plot(plotHandles(j),xs,psthVals,'color',plotColor);
         else
